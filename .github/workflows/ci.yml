@@ -1,0 +1,23 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.9", "3.11", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: pip install -e ".[dev]"
+      - run: pytest -q
+      - name: Lint the fixed example policy (must be clean)
+        run: policyproof lint examples/refund_policy_fixed.json --strict
+      - name: Report on the flawed example policy (job summary)
+        run: policyproof lint examples/refund_policy.json --format md >> "$GITHUB_STEP_SUMMARY" || true
