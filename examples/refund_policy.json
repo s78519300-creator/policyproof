@@ -1,0 +1,37 @@
+{
+  "name": "Refund policy v3 (as written by Support Ops)",
+  "strategy": "unique",
+  "decisions": ["refund", "replace", "reject", "escalate"],
+  "fields": {
+    "order_value":          {"type": "integer", "min": 0, "max": 200000, "unit": "INR"},
+    "days_since_delivery":  {"type": "integer", "min": 0, "max": 365},
+    "category":             {"type": "enum", "values": ["electronics", "fashion", "grocery", "furniture"]},
+    "item_damaged":         {"type": "bool"},
+    "customer_tier":        {"type": "enum", "values": ["regular", "gold"]},
+    "refunds_last_90_days": {"type": "integer", "min": 0, "max": 20}
+  },
+  "rules": [
+    {"id": "R1", "source": "2.1 Groceries cannot be returned unless damaged",
+     "when": {"category": "grocery", "item_damaged": false}, "then": "reject"},
+    {"id": "R2", "source": "2.2 Damaged items reported within 7 days get a full refund",
+     "when": {"item_damaged": true, "days_since_delivery": {"lte": 7}}, "then": "refund"},
+    {"id": "R3", "source": "2.3 Fashion and electronics can be returned within 30 days",
+     "when": {"item_damaged": false, "days_since_delivery": {"lte": 30},
+              "category": ["fashion", "electronics"], "order_value": {"lt": 50000}}, "then": "refund"},
+    {"id": "R4", "source": "2.4 Returns of INR 50,000 or more need a manager",
+     "when": {"item_damaged": false, "days_since_delivery": {"lte": 30}, "order_value": {"gte": 50000}},
+     "then": "escalate"},
+    {"id": "R5", "source": "2.5 No returns after 30 days",
+     "when": {"days_since_delivery": {"gt": 30}}, "then": "reject"},
+    {"id": "R6", "source": "3.1 Three or more refunds in 90 days is possible abuse",
+     "when": {"refunds_last_90_days": {"gte": 3}}, "then": "escalate"},
+    {"id": "R7", "source": "4.1 Gold members get a 45-day return window",
+     "when": {"customer_tier": "gold", "item_damaged": false, "days_since_delivery": {"lte": 45}},
+     "then": "refund"},
+    {"id": "R8", "source": "2.6 Furniture is replaced, not refunded",
+     "when": {"category": "furniture", "item_damaged": true, "days_since_delivery": {"lte": 3}},
+     "then": "replace"},
+    {"id": "R9", "source": "5.2 Gift cards are final sale",
+     "when": {"order_value": {"lt": 0}}, "then": "reject"}
+  ]
+}
